@@ -51,6 +51,29 @@ def create_mock_websocket(messages=None):
     return mock_ws
 
 
+def test_conversation_drops_stale_audio_but_keeps_interruption_boundary():
+    conversation = Conversation(
+        client=MagicMock(),
+        agent_id=TEST_AGENT_ID,
+        requires_auth=False,
+    )
+    conversation._last_interrupt_id = 87
+    handler = MagicMock()
+    handler.callback_audio_alignment = None
+
+    conversation._handle_message_core(
+        {"type": "audio", "audio_event": {"event_id": "86", "audio_base_64": "dGVzdA=="}},
+        handler,
+    )
+    handler.handle_audio_output.assert_not_called()
+
+    conversation._handle_message_core(
+        {"type": "audio", "audio_event": {"event_id": "87", "audio_base_64": "dGVzdA=="}},
+        handler,
+    )
+    handler.handle_audio_output.assert_called_once_with(b"test")
+
+
 def test_conversation_basic_flow():
     # Mock setup
     mock_ws = create_mock_websocket()
